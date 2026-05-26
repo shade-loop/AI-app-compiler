@@ -1,29 +1,29 @@
 import os
 import json
 import re
-import httpx
+from groq import Groq
 from typing import Any, Dict
 from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = "llama-3.3-70b-versatile"
+
+client = Groq(api_key=GROQ_API_KEY)
 
 
 async def call_gemini(system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
-    payload = {
-        "systemInstruction": {"parts": [{"text": system_prompt}]},
-        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-        "generationConfig": {"temperature": temperature, "maxOutputTokens": 8000}
-    }
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post(
-            f"{GEMINI_URL}?key={GEMINI_API_KEY}", json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+    response = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=temperature,
+        max_tokens=8000,
+    )
+    return response.choices[0].message.content
 
 
 def extract_json(text: str) -> Dict[str, Any]:
